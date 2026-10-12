@@ -13,7 +13,8 @@ namespace LimbusTurkce
     // Tiklayinca ya da tusa basinca kapilar hemen acilir
     class Intro : Control
     {
-        public const float SceneSeconds = 1.9f;
+        const float CardSeconds = 1.3f;
+        public const float SceneSeconds = CardSeconds + 1.9f;
         const float DoorSeconds = 0.55f;
 
         static readonly Color Gold = Color.FromArgb(240, 178, 72);
@@ -150,6 +151,12 @@ namespace LimbusTurkce
                 var cx = width / 2f;
                 var cy = height / 2f;
 
+                // Once oyunlarin basindaki studyo karti gibi kisa bir kart
+                // Sonra tekerlek sahnesi kartin bittigi yerden baslar
+                if (t < CardSeconds) DrawCard(g, width, height, t, dpi);
+                var hintTime = t;
+                t -= CardSeconds;
+
                 // Arkada soluk muhur yavasca belirir
                 var sealAlpha = 0.16f * Ease(Range(t, 0.1f, 0.9f));
                 if (sealAlpha > 0)
@@ -207,7 +214,7 @@ namespace LimbusTurkce
                         g.Clip = clip;
                     }
 
-                    var hintAlpha = hint ? Range(t, 0.6f, 1.0f) : 0f;
+                    var hintAlpha = hint ? Range(hintTime, 0.6f, 1.0f) : 0f;
                     if (hintAlpha > 0)
                         using (var tiny = new Font(small.FontFamily, 11f * dpi, FontStyle.Regular, GraphicsUnit.Pixel))
                         using (var brush = new SolidBrush(Color.FromArgb((int)(150 * hintAlpha), Muted)))
@@ -219,6 +226,58 @@ namespace LimbusTurkce
                 }
             }
             return bmp;
+        }
+
+        // LIMBUS TURKIYE karti
+        // Yazi hafifce yukari suzulerek belirir ve soner
+        // Iki yaninda ince ayrac cizgileri acilir
+        static void DrawCard(Graphics g, int width, int height, float t, float dpi)
+        {
+            var alpha = Ease(Range(t, 0.05f, 0.4f)) * (1f - Range(t, CardSeconds - 0.3f, CardSeconds));
+            if (alpha <= 0) return;
+            var cx = width / 2f;
+            var cy = height / 2f - 10f * dpi + 8f * dpi * (1f - Ease(Range(t, 0.05f, 0.5f)));
+
+            using (var big = new Font(Art.Family("Bahnschrift SemiBold"), 30f * dpi, FontStyle.Regular, GraphicsUnit.Pixel))
+            using (var small = new Font(Art.Family("Bahnschrift Light"), 15f * dpi, FontStyle.Regular, GraphicsUnit.Pixel))
+            using (var gold = new SolidBrush(Color.FromArgb((int)(255 * alpha), Gold)))
+            using (var muted = new SolidBrush(Color.FromArgb((int)(220 * alpha), Muted)))
+            {
+                // Harf araligi acik yazilmis baslik
+                // Ozel ad oldugu icin LIMBUS noktasiz I ile kalir
+                const string title = "LIMBUS TÜRKİYE";
+                var spacing = 7f * dpi;
+                var format = StringFormat.GenericTypographic;
+                var widths = new float[title.Length];
+                var total = 0f;
+                for (var i = 0; i < title.Length; i++)
+                {
+                    widths[i] = title[i] == ' ' ? 12f * dpi : g.MeasureString(title[i].ToString(), big, PointF.Empty, format).Width;
+                    total += widths[i] + (i < title.Length - 1 ? spacing : 0);
+                }
+                var x = cx - total / 2f;
+                var y = cy - big.Height / 2f;
+                for (var i = 0; i < title.Length; i++)
+                {
+                    g.DrawString(title[i].ToString(), big, gold, x, y, format);
+                    x += widths[i] + spacing;
+                }
+
+                var lineGrow = Ease(Range(t, 0.2f, 0.7f));
+                var lineLength = 90f * dpi * lineGrow;
+                var gap = 22f * dpi;
+                var lineY = (int)(cy + 1);
+                if (lineLength > 1)
+                {
+                    var divider = Art.Get("ayrac");
+                    Art.DrawFaded(g, divider, new Rectangle((int)(cx - total / 2f - gap - lineLength), lineY, (int)lineLength, (int)Math.Max(2, 2 * dpi)), alpha);
+                    Art.DrawFaded(g, divider, new Rectangle((int)(cx + total / 2f + gap), lineY, (int)lineLength, (int)Math.Max(2, 2 * dpi)), alpha);
+                }
+
+                const string presents = "sunar";
+                var size = g.MeasureString(presents, small);
+                g.DrawString(presents, small, muted, cx - size.Width / 2f, cy + big.Height / 2f + 6f * dpi);
+            }
         }
 
         static float Range(float t, float from, float to) => Math.Max(0f, Math.Min(1f, (t - from) / (to - from)));
