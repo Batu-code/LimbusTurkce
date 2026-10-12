@@ -16,6 +16,8 @@ namespace LimbusTurkce
         [DataMember] public string InstalledVersion { get; set; }
         [DataMember] public string InstalledFingerprint { get; set; }
         [DataMember] public DateTime? InstalledAt { get; set; }
+        // Tam acilis sahnesi ilk acilista ve uygulama guncellenince bir kez oynar
+        [DataMember] public string IntroSeenVersion { get; set; }
 
         public static string Folder => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "LimbusTurkce");
         public static string CacheFolder => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "LimbusTurkce", "paketler");

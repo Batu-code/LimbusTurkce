@@ -183,9 +183,26 @@ namespace LimbusTurkce
             notesFrame.Controls.Add(notes);
             Add(notesFrame);
 
+            // Acilis sahnesi her seyin ustunde durur
+            // Bitince kendini kaldirir
+            var fullIntro = settings.IntroSeenVersion != SelfUpdate.Current.ToString(3);
+            var intro = new Intro(fullIntro) { Dock = DockStyle.Fill };
+            Add(intro);
+            intro.BringToFront();
+            intro.Click += (s, e) => intro.Skip();
+            KeyPreview = true;
+            KeyDown += (s, e) => { if (!intro.IsDisposed) intro.Skip(); };
+            intro.Finished += (s, e) =>
+            {
+                if (!fullIntro) return;
+                settings.IntroSeenVersion = SelfUpdate.Current.ToString(3);
+                SaveSettings();
+            };
+
             Shown += async (s, e) =>
             {
                 FadeIn();
+                intro.Start();
                 await Startup();
             };
         }

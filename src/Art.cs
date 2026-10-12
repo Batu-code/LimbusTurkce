@@ -81,11 +81,11 @@ namespace LimbusTurkce
 
         // Bahnschrift Windows 10 ile geliyor
         // Yoksa Segoe UI kullanilir
-        public static Font Font(string family, float size, FontStyle style = FontStyle.Regular)
-        {
-            var exists = FontFamily.Families.Any(f => f.Name == family);
-            return new Font(exists ? family : "Segoe UI", size, style);
-        }
+        public static Font Font(string family, float size, FontStyle style = FontStyle.Regular) =>
+            new Font(Family(family), size, style);
+
+        public static FontFamily Family(string family) =>
+            FontFamily.Families.FirstOrDefault(f => f.Name == family) ?? new FontFamily("Segoe UI");
     }
 
     // Butun animasyonlari tek zamanlayicidan surer
