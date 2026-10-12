@@ -28,4 +28,10 @@
     <Reference Include="System.Runtime.Serialization" />
   </ItemGroup>
 
+  <!-- Oyunun arayuz gorselleri exe'nin icine gomulur -->
+  <!-- Sartlari art/NOTICE.md icinde -->
+  <ItemGroup>
+    <EmbeddedResource Include="art\*.png" LogicalName="LimbusTurkce.art.%(Filename)%(Extension)" />
+  </ItemGroup>
+
 </Project>
