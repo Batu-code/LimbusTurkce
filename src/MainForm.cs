@@ -44,7 +44,9 @@ namespace LimbusTurkce
         readonly Label gameValue, installedValue, latestValue, status;
         readonly ArtButton primary, play, reinstall, uninstall;
         Bitmap backdrop;
-        readonly CheckBox setLanguage;
+        readonly Wheel wheel;
+        readonly Label languageLabel;
+        readonly ArtButton turkishOn, turkishOff;
         readonly Bar bar;
         readonly RichTextBox notes;
 
@@ -64,9 +66,14 @@ namespace LimbusTurkce
             ForeColor = Ink;
             Font = new Font("Segoe UI", 9.75F);
             DoubleBuffered = true;
+            // Acilista yumusakca belirir
+            Opacity = 0;
 
             // Baslik bolgesi
-            // Otobus tekerlegi ve zemin cizimi OnPaintBackground icinde
+            // Zemin cizimi OnPaintBackground icinde
+            // Otobus tekerlegi ayri denetim cunku is surerken donuyor
+            wheel = new Wheel { Location = new Point(24, 24), Size = new Size(52, 52) };
+            Add(wheel);
             Add(MakeLabel("LIMBUS COMPANY", 86, 24, 260, 16, Muted, Art.Font("Bahnschrift SemiBold", 8.5F)));
             Add(MakeLabel("Türkçe Yama", 83, 37, 270, 40, Gold, Art.Font("Bahnschrift SemiBold Condensed", 24F)));
             Add(MakeLabel("Hayran yapımıdır. Project Moon ile bağlantısı yoktur.", 26, 86, 318, 18, Muted, Art.Font("Bahnschrift Light", 8.5F)));
@@ -137,17 +144,20 @@ namespace LimbusTurkce
             }
             Add(secondary);
 
-            setLanguage = new CheckBox
-            {
-                Text = "Kurunca oyunun dilini Türkçe yap",
-                Location = new Point(24, 438),
-                Size = new Size(320, 22),
-                ForeColor = Ink,
-                BackColor = Color.Transparent,
-                Checked = settings.SetGameLanguage,
-            };
-            setLanguage.CheckedChanged += (s, e) => { settings.SetGameLanguage = setLanguage.Checked; SaveSettings(); };
-            Add(setLanguage);
+            // Yamayi kaldirmadan dil degistirme
+            // Secili olan dugme hep yanik durur
+            languageLabel = MakeLabel("OYUN DİLİ", 24, 446, 80, 16, Muted, Art.Font("Bahnschrift SemiBold", 8F));
+            Add(languageLabel);
+            turkishOn = MakeButton("Türkçe");
+            turkishOn.Location = new Point(104, 437);
+            turkishOn.Size = new Size(96, 30);
+            turkishOn.Click += (s, e) => ChangeLanguage(true);
+            Add(turkishOn);
+            turkishOff = MakeButton("İngilizce");
+            turkishOff.Location = new Point(208, 437);
+            turkishOff.Size = new Size(96, 30);
+            turkishOff.Click += (s, e) => ChangeLanguage(false);
+            Add(turkishOff);
 
             var footer = new FlowLayoutPanel { Location = new Point(24, 480), Size = new Size(320, 22), FlowDirection = FlowDirection.LeftToRight, WrapContents = false, BackColor = Color.Transparent };
             footer.Controls.Add(MakeLink("GitHub", GithubUrl));
@@ -173,7 +183,21 @@ namespace LimbusTurkce
             notesFrame.Controls.Add(notes);
             Add(notesFrame);
 
-            Shown += async (s, e) => await Startup();
+            Shown += async (s, e) =>
+            {
+                FadeIn();
+                await Startup();
+            };
+        }
+
+        void FadeIn()
+        {
+            Animator.Run(dt =>
+            {
+                if (IsDisposed) return false;
+                Opacity = Math.Min(1.0, Opacity + dt / 0.3);
+                return Opacity < 1.0;
+            });
         }
 
         async Task Startup()
@@ -226,9 +250,16 @@ namespace LimbusTurkce
             // Buyuk tus zaten Oyna diyorsa ikincisine gerek yok
             play.Visible = installed && action != Step.Play;
             primary.Enabled = !busy && action != Step.Wait;
-            play.Enabled = reinstall.Enabled = uninstall.Enabled = setLanguage.Enabled = !busy;
+            play.Enabled = reinstall.Enabled = uninstall.Enabled = turkishOn.Enabled = turkishOff.Enabled = !busy;
             primary.TextColor = action == Step.Repair ? Red : Gold;
+            // Oyuncudan bir sey bekleniyorsa buyuk tus nefes alir
+            primary.Pulse = !busy && (action == Step.AppUpdate || action == Step.Install || action == Step.Update || action == Step.Repair);
             primary.Invalidate();
+
+            languageLabel.Visible = turkishOn.Visible = turkishOff.Visible = installed;
+            var turkish = installed && Installer.SelectedLanguage(game) == Installer.PackName;
+            turkishOn.Selected = turkish;
+            turkishOff.Selected = installed && !turkish;
         }
 
         void Set(Step next, string label, string message)
@@ -292,8 +323,7 @@ namespace LimbusTurkce
         {
             bar.Value = 100;
             var report = new Progress<string>(SetStatus);
-            var language = settings.SetGameLanguage;
-            await Task.Run(() => Installer.Install(game, zip, language, report));
+            await Task.Run(() => Installer.Install(game, zip, true, report));
 
             settings.InstalledVersion = version.ToString(3);
             settings.InstalledFingerprint = Game.EnglishFingerprint(game);
@@ -302,10 +332,33 @@ namespace LimbusTurkce
             RemoveOldPacks(zip);
             RenderNotes();
 
-            SetStatus(language
-                ? $"v{version.ToString(3)} kuruldu. Oyna'ya basın, oyun Türkçe açılır."
-                : $"v{version.ToString(3)} kuruldu. Oyunda giriş ekranından Select Custom Language > Turkish seçin.");
+            SetStatus($"v{version.ToString(3)} kuruldu. Oyna'ya basın, oyun Türkçe açılır.");
             keepStatus = true;
+            Stamp("KURULDU");
+        }
+
+        // Limbus muhru kartin ve buyuk tusun ustune damga gibi iner
+        void Stamp(string text)
+        {
+            var scale = DeviceDpi / 96f;
+            var area = new Rectangle((int)(24 * scale), (int)(96 * scale), (int)(320 * scale), (int)(250 * scale));
+            try { StampOverlay.Play(this, RectangleToScreen(area), text); }
+            catch { }
+        }
+
+        void ChangeLanguage(bool turkish)
+        {
+            if (busy || game == null) return;
+            try
+            {
+                Installer.SetLanguage(game, turkish);
+                SetStatus(turkish
+                    ? "Oyun bir sonraki açılışta Türkçe başlar."
+                    : "Oyun bir sonraki açılışta İngilizce başlar. Yama dosyaları yerinde duruyor.");
+                keepStatus = true;
+            }
+            catch (Exception ex) { ShowError(ex); }
+            RefreshState();
         }
 
         void Uninstall()
@@ -388,12 +441,14 @@ namespace LimbusTurkce
             busy = true;
             keepStatus = false;
             bar.Value = 0;
+            wheel.Spinning = true;
             RefreshState();
             try { await job(); }
             catch (Exception ex) { ShowError(ex); }
             finally
             {
                 busy = false;
+                wheel.Spinning = false;
                 bar.Value = 0;
                 RefreshState();
             }
@@ -547,8 +602,6 @@ namespace LimbusTurkce
                 Art.DrawNine(g, Art.Get("zemin"), new Rectangle(Point.Empty, ClientSize), 40, 0.7f * scale);
                 // Limbus muhru sol altta soluk bir filigran
                 Art.DrawFaded(g, Art.Get("muhur"), At(176, 318, 168, 194), 0.42f);
-                // Bolum basliklarindaki otobus tekerlegi
-                Art.DrawFaded(g, Art.Get("teker"), At(24, 24, 52, 52), 1f);
                 // Oyundaki alt baslik seridi
                 Art.DrawFaded(g, Art.Get("serit"), At(20, 84, 320, 22), 0.35f);
                 Art.DrawFaded(g, Art.Get("ayrac"), At(368, 48, 388, 2), 1f);
