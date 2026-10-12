@@ -21,12 +21,14 @@ namespace LimbusTurkce
         // Bos kalirsa baglanti gizlenir
         static readonly string DiscordUrl = "";
 
-        static readonly Color Back = Color.FromArgb(21, 18, 15);
-        static readonly Color Card = Color.FromArgb(32, 27, 23);
-        static readonly Color Gold = Color.FromArgb(212, 166, 74);
-        static readonly Color Red = Color.FromArgb(168, 50, 45);
-        static readonly Color Ink = Color.FromArgb(237, 230, 218);
-        static readonly Color Muted = Color.FromArgb(156, 146, 134);
+        // Renkler oyunun ortak pencere gorsellerinden olculdu
+        static readonly Color Back = Color.FromArgb(16, 16, 13);
+        static readonly Color Card = Color.FromArgb(9, 5, 9);
+        static readonly Color Gold = Color.FromArgb(240, 178, 72);
+        static readonly Color Orange = Color.FromArgb(255, 132, 0);
+        static readonly Color Red = Color.FromArgb(232, 84, 60);
+        static readonly Color Ink = Color.FromArgb(239, 222, 200);
+        static readonly Color Muted = Color.FromArgb(170, 145, 120);
         static readonly CultureInfo Turkish = new CultureInfo("tr-TR");
 
         enum Step { AppUpdate, PickFolder, Install, Update, Repair, Play, Wait }
@@ -40,7 +42,8 @@ namespace LimbusTurkce
         bool busy;
 
         readonly Label gameValue, installedValue, latestValue, status;
-        readonly Button primary, play, reinstall, uninstall;
+        readonly ArtButton primary, play, reinstall, uninstall;
+        Bitmap backdrop;
         readonly CheckBox setLanguage;
         readonly Bar bar;
         readonly RichTextBox notes;
@@ -60,55 +63,72 @@ namespace LimbusTurkce
             BackColor = Back;
             ForeColor = Ink;
             Font = new Font("Segoe UI", 9.75F);
+            DoubleBuffered = true;
 
-            Add(MakeLabel("LIMBUS COMPANY", 24, 18, 320, 18, Muted, 8.25F, FontStyle.Bold));
-            Add(MakeLabel("Türkçe Yama", 22, 34, 320, 40, Gold, 20F, FontStyle.Bold));
-            Add(MakeLabel("Hayran yapımıdır. Project Moon ile bağlantısı yoktur.", 24, 76, 320, 18, Muted, 8.25F));
+            // Baslik bolgesi
+            // Otobus tekerlegi ve zemin cizimi OnPaintBackground icinde
+            Add(MakeLabel("LIMBUS COMPANY", 86, 24, 260, 16, Muted, Art.Font("Bahnschrift SemiBold", 8.5F)));
+            Add(MakeLabel("Türkçe Yama", 83, 37, 270, 40, Gold, Art.Font("Bahnschrift SemiBold Condensed", 24F)));
+            Add(MakeLabel("Hayran yapımıdır. Project Moon ile bağlantısı yoktur.", 26, 86, 318, 18, Muted, Art.Font("Bahnschrift Light", 8.5F)));
 
-            var card = new Panel { Location = new Point(24, 106), Size = new Size(320, 156), BackColor = Card };
+            var card = new ArtPanel { Location = new Point(24, 112), Size = new Size(320, 150) };
             Controls.Add(card);
-            card.Controls.Add(MakeLabel("Oyun klasörü", 14, 12, 200, 18, Muted, 8.25F));
-            gameValue = MakeLabel("", 14, 30, 292, 20, Ink);
+            card.Controls.Add(MakeLabel("OYUN KLASÖRÜ", 16, 12, 200, 16, Muted, Art.Font("Bahnschrift SemiBold", 8F)));
+            gameValue = MakeLabel("", 16, 29, 290, 20, Ink);
             gameValue.AutoEllipsis = true;
             card.Controls.Add(gameValue);
             var change = new LinkLabel
             {
                 Text = "Değiştir",
-                Location = new Point(244, 12),
-                Size = new Size(62, 18),
+                Location = new Point(240, 11),
+                Size = new Size(66, 18),
                 TextAlign = ContentAlignment.TopRight,
                 LinkColor = Gold,
                 ActiveLinkColor = Ink,
                 LinkBehavior = LinkBehavior.HoverUnderline,
-                Font = new Font("Segoe UI", 8.25F),
+                BackColor = Color.Transparent,
+                Font = Art.Font("Bahnschrift", 8.5F),
             };
             change.LinkClicked += (s, e) => { if (!busy) PickFolder(); };
             card.Controls.Add(change);
-            card.Controls.Add(MakeLabel("Kurulu sürüm", 14, 64, 200, 18, Muted, 8.25F));
-            installedValue = MakeLabel("", 14, 82, 292, 20, Ink);
+            card.Controls.Add(MakeLabel("KURULU SÜRÜM", 16, 59, 200, 16, Muted, Art.Font("Bahnschrift SemiBold", 8F)));
+            installedValue = MakeLabel("", 16, 76, 290, 20, Ink);
             card.Controls.Add(installedValue);
-            card.Controls.Add(MakeLabel("Son sürüm", 14, 110, 200, 18, Muted, 8.25F));
-            latestValue = MakeLabel("Yükleniyor...", 14, 128, 292, 20, Ink);
+            card.Controls.Add(MakeLabel("SON SÜRÜM", 16, 104, 200, 16, Muted, Art.Font("Bahnschrift SemiBold", 8F)));
+            latestValue = MakeLabel("Yükleniyor...", 16, 121, 290, 20, Ink);
             card.Controls.Add(latestValue);
 
-            primary = MakeButton("", 24, 278, 320, 48, Gold, Back, 11F);
+            // Buyuk tus oyunun afis cercevesi
+            // Uzerine gelince altin rengi yanar
+            primary = new ArtButton
+            {
+                Normal = "afis",
+                Hover = "afis-parlak",
+                Slice = 26,
+                SliceScale = 0.36f,
+                Location = new Point(24, 276),
+                Size = new Size(320, 52),
+                Font = Art.Font("Bahnschrift SemiBold", 13F),
+                TextColor = Gold,
+                HoverTextColor = Color.FromArgb(255, 236, 190),
+            };
             primary.Name = "primary";
             primary.Click += async (s, e) => await RunPrimary();
             Add(primary);
 
-            bar = new Bar { Location = new Point(24, 334), Size = new Size(320, 4), BackColor = Card, ForeColor = Gold };
+            bar = new Bar { Location = new Point(28, 334), Size = new Size(312, 3), BackColor = Color.FromArgb(48, 28, 20), ForeColor = Orange };
             Add(bar);
 
-            status = MakeLabel("", 24, 344, 320, 44, Muted, 9F);
+            status = MakeLabel("", 24, 343, 320, 44, Muted, new Font("Segoe UI", 9F));
             Add(status);
 
             // Gizlenen tusun yeri kendiliginden kapansin diye sira icinde
-            var secondary = new FlowLayoutPanel { Location = new Point(24, 394), Size = new Size(330, 32), WrapContents = false, Margin = Padding.Empty };
-            play = MakeButton("Oyna", 0, 0, 100, 32, Card, Ink, 9.75F);
+            var secondary = new FlowLayoutPanel { Location = new Point(24, 392), Size = new Size(330, 34), WrapContents = false, Margin = Padding.Empty, BackColor = Color.Transparent };
+            play = MakeButton("Oyna");
             play.Click += (s, e) => Play();
-            reinstall = MakeButton("Yeniden kur", 0, 0, 100, 32, Card, Ink, 9.75F);
+            reinstall = MakeButton("Yeniden kur");
             reinstall.Click += async (s, e) => await Reinstall();
-            uninstall = MakeButton("Kaldır", 0, 0, 100, 32, Card, Ink, 9.75F);
+            uninstall = MakeButton("Kaldır");
             uninstall.Click += (s, e) => Uninstall();
             foreach (var button in new[] { play, reinstall, uninstall })
             {
@@ -123,21 +143,22 @@ namespace LimbusTurkce
                 Location = new Point(24, 438),
                 Size = new Size(320, 22),
                 ForeColor = Ink,
+                BackColor = Color.Transparent,
                 Checked = settings.SetGameLanguage,
             };
             setLanguage.CheckedChanged += (s, e) => { settings.SetGameLanguage = setLanguage.Checked; SaveSettings(); };
             Add(setLanguage);
 
-            var footer = new FlowLayoutPanel { Location = new Point(24, 484), Size = new Size(320, 22), FlowDirection = FlowDirection.LeftToRight, WrapContents = false };
+            var footer = new FlowLayoutPanel { Location = new Point(24, 480), Size = new Size(320, 22), FlowDirection = FlowDirection.LeftToRight, WrapContents = false, BackColor = Color.Transparent };
             footer.Controls.Add(MakeLink("GitHub", GithubUrl));
             if (DiscordUrl != "") footer.Controls.Add(MakeLink("Discord", DiscordUrl));
-            footer.Controls.Add(new Label { Text = "Uygulama v" + SelfUpdate.Current.ToString(3), ForeColor = Muted, AutoSize = true, Font = new Font("Segoe UI", 8.25F), Margin = new Padding(8, 3, 0, 0) });
+            footer.Controls.Add(new Label { Text = "Uygulama v" + SelfUpdate.Current.ToString(3), ForeColor = Muted, AutoSize = true, BackColor = Color.Transparent, Font = Art.Font("Bahnschrift", 8.5F), Margin = new Padding(8, 3, 0, 0) });
             Add(footer);
 
-            Add(MakeLabel("Neler değişti", 368, 18, 300, 22, Gold, 11F, FontStyle.Bold));
-            // RichTextBox'in kendi kenar boslugu yok
-            // Ayni renkte bir cerceve icine konuyor
-            var notesFrame = new Panel { Location = new Point(368, 48), Size = new Size(388, 458), BackColor = Card, Padding = new Padding(14, 12, 6, 12) };
+            Add(MakeLabel("NELER DEĞİŞTİ", 368, 22, 300, 24, Gold, Art.Font("Bahnschrift SemiBold", 12F)));
+            // RichTextBox saydam olamiyor
+            // Panelin ortasindaki renkle boyanip panelin icine konuyor
+            var notesFrame = new ArtPanel { Location = new Point(368, 56), Size = new Size(388, 446), Padding = new Padding(16, 14, 8, 14) };
             notes = new RichTextBox
             {
                 Dock = DockStyle.Fill,
@@ -206,8 +227,8 @@ namespace LimbusTurkce
             play.Visible = installed && action != Step.Play;
             primary.Enabled = !busy && action != Step.Wait;
             play.Enabled = reinstall.Enabled = uninstall.Enabled = setLanguage.Enabled = !busy;
-            primary.BackColor = action == Step.Repair ? Red : Gold;
-            primary.ForeColor = action == Step.Repair ? Ink : Back;
+            primary.TextColor = action == Step.Repair ? Red : Gold;
+            primary.Invalidate();
         }
 
         void Set(Step next, string label, string message)
@@ -497,27 +518,48 @@ namespace LimbusTurkce
 
         void Add(Control control) => Controls.Add(control);
 
-        static Label MakeLabel(string text, int x, int y, int w, int h, Color color, float size = 9.75F, FontStyle style = FontStyle.Regular) =>
-            new Label { Text = text, Location = new Point(x, y), Size = new Size(w, h), ForeColor = color, Font = new Font("Segoe UI", size, style), BackColor = Color.Transparent };
-
-        static Button MakeButton(string text, int x, int y, int w, int h, Color back, Color fore, float size)
+        // Zemin tek seferde bir resme cizilip saklanir
+        // Saydam yazilar ve tuslar her boyanista bu resmin ilgili parcasini kullanir
+        protected override void OnPaintBackground(PaintEventArgs e)
         {
-            var button = new Button
-            {
-                Text = text,
-                Location = new Point(x, y),
-                Size = new Size(w, h),
-                BackColor = back,
-                ForeColor = fore,
-                FlatStyle = FlatStyle.Flat,
-                Font = new Font("Segoe UI", size, FontStyle.Bold),
-                Cursor = Cursors.Hand,
-                UseVisualStyleBackColor = false,
-            };
-            button.FlatAppearance.BorderSize = 0;
-            button.FlatAppearance.MouseOverBackColor = ControlPaint.Light(back, 0.15F);
-            return button;
+            if (backdrop == null || backdrop.Size != ClientSize) BuildBackdrop();
+            e.Graphics.DrawImageUnscaled(backdrop, 0, 0);
         }
+
+        protected override void OnDpiChanged(DpiChangedEventArgs e)
+        {
+            base.OnDpiChanged(e);
+            backdrop?.Dispose();
+            backdrop = null;
+            Invalidate(true);
+        }
+
+        void BuildBackdrop()
+        {
+            backdrop?.Dispose();
+            backdrop = new Bitmap(Math.Max(1, ClientSize.Width), Math.Max(1, ClientSize.Height));
+            var scale = DeviceDpi / 96f;
+            Rectangle At(int x, int y, int w, int h) => new Rectangle((int)(x * scale), (int)(y * scale), (int)(w * scale), (int)(h * scale));
+
+            using (var g = Graphics.FromImage(backdrop))
+            {
+                g.Clear(Back);
+                Art.DrawNine(g, Art.Get("zemin"), new Rectangle(Point.Empty, ClientSize), 40, 0.7f * scale);
+                // Limbus muhru sol altta soluk bir filigran
+                Art.DrawFaded(g, Art.Get("muhur"), At(176, 318, 168, 194), 0.42f);
+                // Bolum basliklarindaki otobus tekerlegi
+                Art.DrawFaded(g, Art.Get("teker"), At(24, 24, 52, 52), 1f);
+                // Oyundaki alt baslik seridi
+                Art.DrawFaded(g, Art.Get("serit"), At(20, 84, 320, 22), 0.35f);
+                Art.DrawFaded(g, Art.Get("ayrac"), At(368, 48, 388, 2), 1f);
+            }
+        }
+
+        static Label MakeLabel(string text, int x, int y, int w, int h, Color color, Font font = null) =>
+            new Label { Text = text, Location = new Point(x, y), Size = new Size(w, h), ForeColor = color, Font = font ?? new Font("Segoe UI", 9.75F), BackColor = Color.Transparent };
+
+        static ArtButton MakeButton(string text) =>
+            new ArtButton { Text = text, Size = new Size(100, 34), Font = Art.Font("Bahnschrift SemiBold", 10F) };
 
         static LinkLabel MakeLink(string text, string url)
         {
@@ -528,7 +570,8 @@ namespace LimbusTurkce
                 LinkColor = Gold,
                 ActiveLinkColor = Ink,
                 LinkBehavior = LinkBehavior.HoverUnderline,
-                Font = new Font("Segoe UI", 8.25F),
+                BackColor = Color.Transparent,
+                Font = Art.Font("Bahnschrift", 8.5F),
                 Margin = new Padding(0, 3, 8, 0),
             };
             link.LinkClicked += (s, e) => Open(url);
