@@ -30,10 +30,13 @@ Uygulama oyunun resmî **özel dil desteğini** kullanır. Oyun dosyalarını de
 | Oyunu bulur | Steam'in kendi kayıt defteri girdisi ve `libraryfolders.vdf` |
 | Oyunun İngilizce metnini **okur** | `LimbusCompany_Data\Assets\Resources_moved\Localize\en` |
 | Dil paketini **yazar** | `LimbusCompany_Data\Lang\Turkish` |
-| Oyun dilini Türkçe yapar (kutu işaretliyse) | `LimbusCompany_Data\Lang\config.json` içindeki `lang` değeri |
+| Kurunca oyun dilini Türkçe yapar | `LimbusCompany_Data\Lang\config.json` içindeki `lang` değeri |
 | Ayarlarını tutar | `%APPDATA%\LimbusTurkce` |
 | İndirdiği son paketi tutar | `%LOCALAPPDATA%\LimbusTurkce\paketler` |
 | İnternete bağlanır | Sadece GitHub: bu deponun sürüm listesi ve sürüm dosyaları |
+
+**Oyun dili** düğmesi yamayı kaldırmadan dili değiştirir. İngilizce seçilince sadece Türkçeyi gösteren
+`config.json` silinir, `Lang\Turkish` yerinde kalır ve Türkçe tek tıkla geri açılır.
 
 **Kaldır** tuşu `Lang\Turkish` klasörünü ve Türkçeyi gösteren `config.json`'u siler, oyun İngilizceye döner.
 
