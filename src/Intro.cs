@@ -15,6 +15,8 @@ namespace LimbusTurkce
     {
         const float CardSeconds = 1.3f;
         public const float SceneSeconds = CardSeconds + 1.9f;
+        // Kisa surumde kapilar kart tam gorunurken acilir
+        const float CardHold = 1.0f;
         const float DoorSeconds = 0.55f;
 
         static readonly Color Gold = Color.FromArgb(240, 178, 72);
@@ -24,25 +26,22 @@ namespace LimbusTurkce
         public event EventHandler Finished;
 
         readonly Func<float, bool> step;
+        readonly float openAt;
         float time, doors;
         bool opening;
         Bitmap still;
 
-        // Kisa surumde sahne atlanir ve sadece kapilar acilir
+        // Kart her acilista gorunur
+        // Tam surumde kartin ardindan tekerlek sahnesi gelir
+        // Kisa surumde kapilar kartin ortasindan ayrilir
         public Intro(bool full)
         {
             SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.Opaque, true);
-            if (!full) time = SceneSeconds;
+            openAt = full ? SceneSeconds : CardHold;
             step = Step;
         }
 
-        public void Start()
-        {
-            // Kisa surumde sahne zaten bitmis sayilir
-            // Kapilar ilk karede acilmaya baslar
-            if (time >= SceneSeconds) BeginOpening();
-            Animator.Run(step);
-        }
+        public void Start() => Animator.Run(step);
 
         public void Skip()
         {
@@ -55,7 +54,7 @@ namespace LimbusTurkce
             if (!opening)
             {
                 time += dt;
-                if (time >= SceneSeconds) BeginOpening();
+                if (time >= openAt) BeginOpening();
                 Invalidate();
                 return true;
             }
@@ -75,9 +74,9 @@ namespace LimbusTurkce
         void BeginOpening()
         {
             opening = true;
-            time = SceneSeconds;
+            time = openAt;
             still?.Dispose();
-            still = Compose(Math.Max(1, Width), Math.Max(1, Height), SceneSeconds, DeviceDpi / 96f, false);
+            still = Compose(Math.Max(1, Width), Math.Max(1, Height), openAt, DeviceDpi / 96f, false);
             UpdateDoors();
         }
 
