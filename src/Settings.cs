@@ -16,7 +16,6 @@ namespace LimbusTurkce
         [DataMember] public string InstalledVersion { get; set; }
         [DataMember] public string InstalledFingerprint { get; set; }
         [DataMember] public DateTime? InstalledAt { get; set; }
-        [DataMember] public bool SetGameLanguage { get; set; } = true;
 
         public static string Folder => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "LimbusTurkce");
         public static string CacheFolder => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "LimbusTurkce", "paketler");
@@ -46,10 +45,5 @@ namespace LimbusTurkce
                 File.WriteAllText(FilePath, Encoding.UTF8.GetString(memory.ToArray()), new UTF8Encoding(false));
             }
         }
-
-        // DataContract yapicilari calistirmaz
-        // Varsayilan buradan gelir
-        [OnDeserializing]
-        void OnDeserializing(StreamingContext context) => SetGameLanguage = true;
     }
 }

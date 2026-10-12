@@ -78,6 +78,27 @@ namespace LimbusTurkce
             DeleteFolder(Target(game));
             // Oyun secili dili bulamazsa ne yapacagini bilmiyoruz
             // Ingilizceye donmesi icin ayari siliyoruz
+            ForgetLanguage(game);
+        }
+
+        // Yamayi kaldirmadan oyunun dilini degistirir
+        // Dosyalar yerinde kalir ve tek tikla geri acilir
+        public static void SetLanguage(string game, bool turkish)
+        {
+            if (Game.IsRunning())
+                throw new InvalidOperationException("Oyun açıkken dil değiştirilemez. Önce Limbus Company'yi kapatın.");
+            if (turkish)
+            {
+                if (!IsInstalled(game)) throw new InvalidOperationException("Önce yamayı kurun.");
+                SelectLanguage(game);
+            }
+            else ForgetLanguage(game);
+        }
+
+        // Kaldirmada da kullanilan yol
+        // Ayar silinince oyun Ingilizce basliyor
+        static void ForgetLanguage(string game)
+        {
             var config = ConfigPath(game);
             if (File.Exists(config) && SelectedLanguage(game) == PackName) File.Delete(config);
         }
