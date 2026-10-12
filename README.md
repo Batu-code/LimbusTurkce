@@ -54,6 +54,8 @@ dotnet build -c Release
 ## Lisans
 
 - **Uygulamanın kaynak kodu:** MIT, `LICENSE` dosyasında.
+- **Arayüz görselleri** (`art/` klasörü): Limbus Company'den alınmıştır ve Project Moon'a aittir.
+  MIT kapsamında değildir, ayrıntısı `art/NOTICE.md` içinde.
 - **Çeviriler** (sürümlerdeki `turkce-yama.zip`): bu projenin emeğidir. İzin almadan başka yerde
   yayımlanamaz, değiştirilip yeniden dağıtılamaz, para karşılığı verilemez. Paylaşmak isterseniz bu sayfanın
   bağlantısını paylaşın.
