@@ -88,8 +88,47 @@ namespace LimbusTurkce
         }
     }
 
+    // Butun animasyonlari tek zamanlayicidan surer
+    // Her adim gecen sureyi alir ve daha surecekse true doner
+    // Hareket eden bir sey kalmayinca zamanlayici durur
+    static class Animator
+    {
+        static readonly Timer Timer = new Timer { Interval = 15 };
+        static readonly List<Func<float, bool>> Steps = new List<Func<float, bool>>();
+        static readonly System.Diagnostics.Stopwatch Clock = System.Diagnostics.Stopwatch.StartNew();
+        static double last;
+
+        static Animator() => Timer.Tick += Tick;
+
+        public static void Run(Func<float, bool> step)
+        {
+            if (!Steps.Contains(step)) Steps.Add(step);
+            if (Timer.Enabled) return;
+            last = Clock.Elapsed.TotalSeconds;
+            Timer.Start();
+        }
+
+        static void Tick(object sender, EventArgs e)
+        {
+            var now = Clock.Elapsed.TotalSeconds;
+            // Pencere suruklenirken takilan kareler sicrama yapmasin
+            var dt = (float)Math.Min(0.1, now - last);
+            last = now;
+            for (var i = Steps.Count - 1; i >= 0; i--)
+                if (!Steps[i](dt)) Steps.RemoveAt(i);
+            if (Steps.Count == 0) Timer.Stop();
+        }
+
+        public static float Toward(float value, float target, float amount) =>
+            value < target ? Math.Min(target, value + amount) : Math.Max(target, value - amount);
+
+        public static Color Mix(Color a, Color b, float t) =>
+            Color.FromArgb((int)(a.R + (b.R - a.R) * t), (int)(a.G + (b.G - a.G) * t), (int)(a.B + (b.B - a.B) * t));
+    }
+
     // Oyunun tus gorselleriyle cizilen tus
-    // Uzerine gelince parlak gorsele gecer
+    // Uzerine gelince parlak gorsel ceyrek saniyede yanar
+    // Pulse acikken kendiliginden yavasca yanip soner
     class ArtButton : Control
     {
         public string Normal = "tus";
@@ -99,7 +138,13 @@ namespace LimbusTurkce
         public Color TextColor = Color.FromArgb(237, 226, 210);
         public Color HoverTextColor = Color.White;
 
-        bool hovered, pressed;
+        const float FadeSeconds = 0.18f;
+        const float PulseSeconds = 1.8f;
+        const float PulseStrength = 0.75f;
+
+        bool hovered, pressed, selected, pulse;
+        float glow, pulsePhase;
+        readonly Func<float, bool> step;
 
         public ArtButton()
         {
@@ -108,28 +153,87 @@ namespace LimbusTurkce
             BackColor = Color.Transparent;
             Cursor = Cursors.Hand;
             AccessibleRole = AccessibleRole.PushButton;
+            step = Step;
         }
 
+        // Iki secenekli dugmede secili olan hep yanik kalir
+        public bool Selected
+        {
+            get => selected;
+            set { if (selected == value) return; selected = value; Animate(); }
+        }
+
+        public bool Pulse
+        {
+            get => pulse;
+            set { if (pulse == value) return; pulse = value; pulsePhase = 0; Animate(); }
+        }
+
+        float Target => Enabled && (hovered || selected) ? 1f : 0f;
+        bool Pulsing => pulse && Enabled && Visible && !IsDisposed;
+
+        void Animate()
+        {
+            if (IsHandleCreated) Animator.Run(step);
+            Invalidate();
+        }
+
+        bool Step(float dt)
+        {
+            if (IsDisposed) return false;
+            glow = Animator.Toward(glow, Target, dt / FadeSeconds);
+            if (Pulsing) pulsePhase = (pulsePhase + dt / PulseSeconds) % 1f;
+            Invalidate();
+            return glow != Target || Pulsing;
+        }
+
+        // Standart tus mesajina da cevap verir
+        // Ekran okuyucular ve otomasyon araclari tusa boyle basar
+        protected override void WndProc(ref Message m)
+        {
+            const int ButtonClick = 0x00F5;
+            if (m.Msg == ButtonClick)
+            {
+                if (Enabled) OnClick(EventArgs.Empty);
+                return;
+            }
+            base.WndProc(ref m);
+        }
+
+        protected override void OnHandleCreated(EventArgs e) { base.OnHandleCreated(e); Animate(); }
         protected override void OnTextChanged(EventArgs e) { base.OnTextChanged(e); Invalidate(); }
-        protected override void OnEnabledChanged(EventArgs e) { base.OnEnabledChanged(e); hovered = pressed = false; Invalidate(); }
-        protected override void OnMouseEnter(EventArgs e) { base.OnMouseEnter(e); hovered = true; Invalidate(); }
-        protected override void OnMouseLeave(EventArgs e) { base.OnMouseLeave(e); hovered = pressed = false; Invalidate(); }
+        protected override void OnEnabledChanged(EventArgs e) { base.OnEnabledChanged(e); hovered = pressed = false; Animate(); }
+        protected override void OnVisibleChanged(EventArgs e) { base.OnVisibleChanged(e); Animate(); }
+        protected override void OnMouseEnter(EventArgs e) { base.OnMouseEnter(e); hovered = true; Animate(); }
+        protected override void OnMouseLeave(EventArgs e) { base.OnMouseLeave(e); hovered = pressed = false; Animate(); }
         protected override void OnMouseDown(MouseEventArgs e) { base.OnMouseDown(e); if (e.Button == MouseButtons.Left) { pressed = true; Invalidate(); } }
         protected override void OnMouseUp(MouseEventArgs e) { base.OnMouseUp(e); pressed = false; Invalidate(); }
 
         protected override void OnPaint(PaintEventArgs e)
         {
             var g = e.Graphics;
-            var lit = Enabled && hovered;
             var scale = SliceScale * DeviceDpi / 96f;
             var rect = new Rectangle(0, 0, Width, Height);
             if (pressed) rect.Inflate(-1, -1);
-            Art.DrawNine(g, Art.Get(lit ? Hover : Normal), rect, Slice, scale, Enabled ? 1f : 0.45f);
 
-            var color = !Enabled ? Color.FromArgb(120, TextColor) : lit ? HoverTextColor : TextColor;
+            if (!Enabled)
+            {
+                Art.DrawNine(g, Art.Get(Normal), rect, Slice, scale, 0.45f);
+                DrawLabel(g, rect, Animator.Mix(Color.Black, TextColor, 0.45f));
+                return;
+            }
+
+            // Nefes egrisi 0 ile 1 arasinda yumusak gidip gelir
+            var breath = Pulsing ? PulseStrength * (0.5f - 0.5f * (float)Math.Cos(pulsePhase * Math.PI * 2)) : 0f;
+            var light = Math.Max(glow, breath);
+            Art.DrawNine(g, Art.Get(Normal), rect, Slice, scale);
+            if (light > 0.01f) Art.DrawNine(g, Art.Get(Hover), rect, Slice, scale, light);
+            DrawLabel(g, rect, Animator.Mix(TextColor, HoverTextColor, light));
+        }
+
+        void DrawLabel(Graphics g, Rectangle rect, Color color) =>
             TextRenderer.DrawText(g, Text, Font, rect, color,
                 TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.SingleLine | TextFormatFlags.EndEllipsis);
-        }
     }
 
     // Oyunun koyu ic paneliyle cizilen kutu
