@@ -18,7 +18,10 @@ namespace LimbusTurkce
         public static Image Get(string name)
         {
             if (Cache.TryGetValue(name, out var image)) return image;
-            using (var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream("LimbusTurkce.art." + name + ".png"))
+            var assembly = Assembly.GetExecutingAssembly();
+            // Saydamligi olmayan buyuk zeminler jpg
+            using (var stream = assembly.GetManifestResourceStream("LimbusTurkce.art." + name + ".png")
+                ?? assembly.GetManifestResourceStream("LimbusTurkce.art." + name + ".jpg"))
             {
                 if (stream == null) throw new InvalidOperationException("Gorsel yok: " + name);
                 // Akis kapaninca GDI+ resmi okuyamaz
@@ -32,17 +35,27 @@ namespace LimbusTurkce
         // Koseleri bozmadan istenen boya cizer
         // slice kaynak resimde kenarin kac piksel oldugu
         // scale kenarin hedefte ne kadar buyuk cizilecegi
-        public static void DrawNine(Graphics g, Image image, Rectangle dest, int slice, float scale, float opacity = 1f)
-        {
-            if (dest.Width <= 0 || dest.Height <= 0) return;
-            var d = (int)Math.Round(slice * scale);
-            d = Math.Min(d, Math.Min(dest.Width, dest.Height) / 2);
-            int w = image.Width, h = image.Height;
+        public static void DrawNine(Graphics g, Image image, Rectangle dest, int slice, float scale, float opacity = 1f) =>
+            DrawNine(g, image, dest, new Padding(slice), scale, opacity);
 
-            int[] sx = { 0, slice, w - slice, w };
-            int[] sy = { 0, slice, h - slice, h };
-            int[] dx = { dest.Left, dest.Left + d, dest.Right - d, dest.Right };
-            int[] dy = { dest.Top, dest.Top + d, dest.Bottom - d, dest.Bottom };
+        // Her kenarin kalinligi ayri
+        // Ust ve alt sifir verilirse resim sadece yatayda uzar
+        public static void DrawNine(Graphics g, Image image, Rectangle dest, Padding slice, float scale, float opacity = 1f, bool center = true)
+        {
+            if (dest.Width <= 0 || dest.Height <= 0 || opacity <= 0.003f) return;
+            int w = image.Width, h = image.Height;
+            var left = (int)Math.Round(slice.Left * scale);
+            var right = (int)Math.Round(slice.Right * scale);
+            var top = (int)Math.Round(slice.Top * scale);
+            var bottom = (int)Math.Round(slice.Bottom * scale);
+            // Hedef kenarlardan kucukse kenarlar orantili daralir
+            if (left + right > dest.Width) { var k = dest.Width / (float)(left + right); left = (int)(left * k); right = dest.Width - left; }
+            if (top + bottom > dest.Height) { var k = dest.Height / (float)(top + bottom); top = (int)(top * k); bottom = dest.Height - top; }
+
+            int[] sx = { 0, slice.Left, w - slice.Right, w };
+            int[] sy = { 0, slice.Top, h - slice.Bottom, h };
+            int[] dx = { dest.Left, dest.Left + left, dest.Right - right, dest.Right };
+            int[] dy = { dest.Top, dest.Top + top, dest.Bottom - bottom, dest.Bottom };
 
             using (var attributes = new ImageAttributes())
             {
@@ -58,25 +71,54 @@ namespace LimbusTurkce
                 for (var row = 0; row < 3; row++)
                     for (var col = 0; col < 3; col++)
                     {
+                        if (!center && row == 1 && col == 1) continue;
                         var target = Rectangle.FromLTRB(dx[col], dy[row], dx[col + 1], dy[row + 1]);
-                        if (target.Width <= 0 || target.Height <= 0) continue;
-                        g.DrawImage(image, target, sx[col], sy[row], sx[col + 1] - sx[col], sy[row + 1] - sy[row], GraphicsUnit.Pixel, attributes);
+                        var sw = sx[col + 1] - sx[col];
+                        var sh = sy[row + 1] - sy[row];
+                        if (target.Width <= 0 || target.Height <= 0 || sw <= 0 || sh <= 0) continue;
+                        g.DrawImage(image, target, sx[col], sy[row], sw, sh, GraphicsUnit.Pixel, attributes);
                     }
                 g.InterpolationMode = oldMode;
                 g.PixelOffsetMode = oldOffset;
             }
         }
 
-        public static void DrawFaded(Graphics g, Image image, Rectangle dest, float opacity)
+        public static void DrawFaded(Graphics g, Image image, Rectangle dest, float opacity) =>
+            DrawFaded(g, image, dest, new Rectangle(0, 0, image.Width, image.Height), opacity);
+
+        public static void DrawFaded(Graphics g, Image image, Rectangle dest, Rectangle source, float opacity)
         {
+            if (opacity <= 0.003f) return;
             using (var attributes = new ImageAttributes())
             {
-                attributes.SetColorMatrix(new ColorMatrix { Matrix33 = opacity });
+                attributes.SetWrapMode(WrapMode.TileFlipXY);
+                if (opacity < 1f) attributes.SetColorMatrix(new ColorMatrix { Matrix33 = opacity });
                 var oldMode = g.InterpolationMode;
                 g.InterpolationMode = InterpolationMode.HighQualityBicubic;
-                g.DrawImage(image, dest, 0, 0, image.Width, image.Height, GraphicsUnit.Pixel, attributes);
+                g.DrawImage(image, dest, source.X, source.Y, source.Width, source.Height, GraphicsUnit.Pixel, attributes);
                 g.InterpolationMode = oldMode;
             }
+        }
+
+        // Onceden olceklenmis resmi bire bir ve hizli kopyalar
+        // Ornekleme yapilmadigi icin her karede cizilebilir
+        public static void Blend(Graphics g, Image image, Point location, float opacity)
+        {
+            if (opacity <= 0.003f) return;
+            var mode = g.InterpolationMode;
+            var offset = g.PixelOffsetMode;
+            g.InterpolationMode = InterpolationMode.NearestNeighbor;
+            g.PixelOffsetMode = PixelOffsetMode.None;
+            var dest = new Rectangle(location, image.Size);
+            if (opacity >= 0.997f) g.DrawImage(image, dest, 0, 0, image.Width, image.Height, GraphicsUnit.Pixel);
+            else
+                using (var attributes = new ImageAttributes())
+                {
+                    attributes.SetColorMatrix(new ColorMatrix { Matrix33 = opacity });
+                    g.DrawImage(image, dest, 0, 0, image.Width, image.Height, GraphicsUnit.Pixel, attributes);
+                }
+            g.InterpolationMode = mode;
+            g.PixelOffsetMode = offset;
         }
 
         // Bahnschrift Windows 10 ile geliyor
@@ -115,7 +157,7 @@ namespace LimbusTurkce
             var dt = (float)Math.Min(0.1, now - last);
             last = now;
             for (var i = Steps.Count - 1; i >= 0; i--)
-                if (!Steps[i](dt)) Steps.RemoveAt(i);
+                if (i < Steps.Count && !Steps[i](dt)) Steps.RemoveAt(i);
             if (Steps.Count == 0) Timer.Stop();
         }
 
@@ -123,138 +165,11 @@ namespace LimbusTurkce
             value < target ? Math.Min(target, value + amount) : Math.Max(target, value - amount);
 
         public static Color Mix(Color a, Color b, float t) =>
-            Color.FromArgb((int)(a.R + (b.R - a.R) * t), (int)(a.G + (b.G - a.G) * t), (int)(a.B + (b.B - a.B) * t));
-    }
+            Color.FromArgb((int)(a.A + (b.A - a.A) * t), (int)(a.R + (b.R - a.R) * t), (int)(a.G + (b.G - a.G) * t), (int)(a.B + (b.B - a.B) * t));
 
-    // Oyunun tus gorselleriyle cizilen tus
-    // Uzerine gelince parlak gorsel ceyrek saniyede yanar
-    // Pulse acikken kendiliginden yavasca yanip soner
-    class ArtButton : Control
-    {
-        public string Normal = "tus";
-        public string Hover = "tus-parlak";
-        public int Slice = 10;
-        public float SliceScale = 0.45f;
-        public Color TextColor = Color.FromArgb(237, 226, 210);
-        public Color HoverTextColor = Color.White;
+        public static float Range(float t, float from, float to) => Math.Max(0f, Math.Min(1f, (t - from) / (to - from)));
 
-        const float FadeSeconds = 0.18f;
-        const float PulseSeconds = 1.8f;
-        const float PulseStrength = 0.75f;
-
-        bool hovered, pressed, selected, pulse;
-        float glow, pulsePhase;
-        readonly Func<float, bool> step;
-
-        public ArtButton()
-        {
-            SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer
-                | ControlStyles.SupportsTransparentBackColor | ControlStyles.ResizeRedraw, true);
-            BackColor = Color.Transparent;
-            Cursor = Cursors.Hand;
-            AccessibleRole = AccessibleRole.PushButton;
-            step = Step;
-        }
-
-        // Iki secenekli dugmede secili olan hep yanik kalir
-        public bool Selected
-        {
-            get => selected;
-            set { if (selected == value) return; selected = value; Animate(); }
-        }
-
-        public bool Pulse
-        {
-            get => pulse;
-            set { if (pulse == value) return; pulse = value; pulsePhase = 0; Animate(); }
-        }
-
-        float Target => Enabled && (hovered || selected) ? 1f : 0f;
-        bool Pulsing => pulse && Enabled && Visible && !IsDisposed;
-
-        void Animate()
-        {
-            if (IsHandleCreated) Animator.Run(step);
-            Invalidate();
-        }
-
-        bool Step(float dt)
-        {
-            if (IsDisposed) return false;
-            glow = Animator.Toward(glow, Target, dt / FadeSeconds);
-            if (Pulsing) pulsePhase = (pulsePhase + dt / PulseSeconds) % 1f;
-            Invalidate();
-            return glow != Target || Pulsing;
-        }
-
-        // Standart tus mesajina da cevap verir
-        // Ekran okuyucular ve otomasyon araclari tusa boyle basar
-        protected override void WndProc(ref Message m)
-        {
-            const int ButtonClick = 0x00F5;
-            if (m.Msg == ButtonClick)
-            {
-                if (Enabled) OnClick(EventArgs.Empty);
-                return;
-            }
-            base.WndProc(ref m);
-        }
-
-        protected override void OnHandleCreated(EventArgs e) { base.OnHandleCreated(e); Animate(); }
-        protected override void OnTextChanged(EventArgs e) { base.OnTextChanged(e); Invalidate(); }
-        protected override void OnEnabledChanged(EventArgs e) { base.OnEnabledChanged(e); hovered = pressed = false; Animate(); }
-        protected override void OnVisibleChanged(EventArgs e) { base.OnVisibleChanged(e); Animate(); }
-        protected override void OnMouseEnter(EventArgs e) { base.OnMouseEnter(e); hovered = true; Animate(); }
-        protected override void OnMouseLeave(EventArgs e) { base.OnMouseLeave(e); hovered = pressed = false; Animate(); }
-        protected override void OnMouseDown(MouseEventArgs e) { base.OnMouseDown(e); if (e.Button == MouseButtons.Left) { pressed = true; Invalidate(); } }
-        protected override void OnMouseUp(MouseEventArgs e) { base.OnMouseUp(e); pressed = false; Invalidate(); }
-
-        protected override void OnPaint(PaintEventArgs e)
-        {
-            var g = e.Graphics;
-            var scale = SliceScale * DeviceDpi / 96f;
-            var rect = new Rectangle(0, 0, Width, Height);
-            if (pressed) rect.Inflate(-1, -1);
-
-            if (!Enabled)
-            {
-                Art.DrawNine(g, Art.Get(Normal), rect, Slice, scale, 0.45f);
-                DrawLabel(g, rect, Animator.Mix(Color.Black, TextColor, 0.45f));
-                return;
-            }
-
-            // Nefes egrisi 0 ile 1 arasinda yumusak gidip gelir
-            var breath = Pulsing ? PulseStrength * (0.5f - 0.5f * (float)Math.Cos(pulsePhase * Math.PI * 2)) : 0f;
-            var light = Math.Max(glow, breath);
-            Art.DrawNine(g, Art.Get(Normal), rect, Slice, scale);
-            if (light > 0.01f) Art.DrawNine(g, Art.Get(Hover), rect, Slice, scale, light);
-            DrawLabel(g, rect, Animator.Mix(TextColor, HoverTextColor, light));
-        }
-
-        void DrawLabel(Graphics g, Rectangle rect, Color color) =>
-            TextRenderer.DrawText(g, Text, Font, rect, color,
-                TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.SingleLine | TextFormatFlags.EndEllipsis);
-    }
-
-    // Oyunun koyu ic paneliyle cizilen kutu
-    // Icindeki saydam yazilar bu zeminin ustune cizilir
-    class ArtPanel : Panel
-    {
-        public string Image = "panel";
-        public int Slice = 12;
-        public float SliceScale = 0.6f;
-
-        public ArtPanel()
-        {
-            SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer
-                | ControlStyles.SupportsTransparentBackColor | ControlStyles.ResizeRedraw, true);
-            BackColor = Color.Transparent;
-        }
-
-        protected override void OnPaintBackground(PaintEventArgs e)
-        {
-            base.OnPaintBackground(e);
-            Art.DrawNine(e.Graphics, Art.Get(Image), new Rectangle(0, 0, Width, Height), Slice, SliceScale * DeviceDpi / 96f);
-        }
+        // Hizli baslayip yavaslayarak duran egri
+        public static float Ease(float k) => 1f - (1f - k) * (1f - k) * (1f - k);
     }
 }
