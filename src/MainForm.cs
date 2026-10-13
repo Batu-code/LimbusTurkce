@@ -651,7 +651,9 @@ namespace LimbusTurkce
             Lettering.Tracked(g, text, font, Color.FromArgb(170, 0, 0, 0), new PointF(origin.X + Px(2), origin.Y + Px(3)), spacing);
             var bounds = new RectangleF(origin.X, origin.Y, width, font.Height);
             using (var brush = new LinearGradientBrush(bounds, Palette.LightGold, Color.FromArgb(226, 132, 36), LinearGradientMode.Vertical))
-            using (var path = new GraphicsPath())
+            // Bahnschrift degisken bir font ve harflerin parcalari ust uste biniyor
+            // Varsayilan doldurma ust uste binen yeri bos birakip harfte delik aciyordu
+            using (var path = new GraphicsPath(FillMode.Winding))
             {
                 var x = origin.X;
                 foreach (var c in text)
