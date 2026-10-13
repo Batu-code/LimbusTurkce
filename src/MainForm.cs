@@ -265,7 +265,7 @@ namespace LimbusTurkce
             var installedVersion = InstalledVersion;
             var gameChanged = installed && settings.InstalledFingerprint != null
                 && settings.InstalledFingerprint != Game.EnglishFingerprint(game);
-            var turkish = installed && Installer.SelectedLanguage(game) == Installer.PackName;
+            var turkish = installed && Installer.IsTurkishActive(game);
             var installedText = installedVersion != null ? InstalledText(installedVersion) : "Eski kurulum (zip ile)";
 
             var appUpdate = AppUpdate;
@@ -417,7 +417,7 @@ namespace LimbusTurkce
                 Installer.SetLanguage(game, turkish);
                 SetMessage(turkish
                     ? "Oyun bir sonraki açılışta Türkçe başlar."
-                    : "Oyun bir sonraki açılışta İngilizce başlar. Yama dosyaları yerinde duruyor.");
+                    : "Oyun bir sonraki açılışta İngilizce başlar. Türkçe dosyalar kenarda bekliyor, tek tıkla geri gelir.");
                 keepMessage = true;
             }
             catch (Exception ex) { ShowError(ex); }

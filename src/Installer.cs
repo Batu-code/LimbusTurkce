@@ -15,6 +15,11 @@ namespace LimbusTurkce
     //   2 bizim ceviriler ustune
     //   3 font
     //     pakette yoksa Windows'un Segoe UI'i
+    //
+    // Oyun Lang icinde buldugu paketi kendisi secebiliyor
+    // config.json silinse bile Turkce acildi (2026-10-13 Batu denedi)
+    // O yuzden Ingilizce secilince paket Lang disindaki kendi klasorumuze cekilir
+    // Kurulum da orada hazirlanir ki yarim kalan bir klasor oyuna dil diye gorunmesin
     static class Installer
     {
         public const string PackName = "Turkish";
@@ -22,7 +27,22 @@ namespace LimbusTurkce
         public static string Target(string game) => Path.Combine(Game.LangDir(game), PackName);
         static string ConfigPath(string game) => Path.Combine(Game.LangDir(game), "config.json");
 
-        public static bool IsInstalled(string game) => Directory.Exists(Target(game));
+        // Oyunun okumadigi kendi calisma klasorumuz
+        static string Work(string game) => Path.Combine(Game.DataDir(game), "LimbusTurkce");
+        public static string Parked(string game) => Path.Combine(Work(game), PackName);
+
+        // Kapali paket de kurulu sayilir
+        public static bool IsInstalled(string game) => Directory.Exists(Target(game)) || Directory.Exists(Parked(game));
+
+        // Oyun Turkce mi acilacak
+        // Paket Lang icindeyse ve ayar baska bir paketi gostermiyorsa evet
+        // Ayar yoksa ya da bossa oyun Lang icindeki paketi kendisi seciyor
+        public static bool IsTurkishActive(string game)
+        {
+            if (!Directory.Exists(Target(game))) return false;
+            var selected = SelectedLanguage(game);
+            return string.IsNullOrEmpty(selected) || selected == PackName;
+        }
 
         public static void Install(string game, string packZip, bool setLanguage, IProgress<string> status)
         {
@@ -33,13 +53,16 @@ namespace LimbusTurkce
             if (!Directory.Exists(english))
                 throw new InvalidOperationException("Oyunun İngilizce metni bulunamadı. Oyun Steam'den doğrulanmalı olabilir.\n" + english);
 
-            var lang = Game.LangDir(game);
-            Directory.CreateDirectory(lang);
+            Directory.CreateDirectory(Game.LangDir(game));
+            // Ingilizce seciliyken guncellenirse oyuncunun secimi korunur
+            var keepEnglish = Directory.Exists(Parked(game)) && !Directory.Exists(Target(game));
 
             // Yeni kurulum once yan klasorde hazirlanir
             // Eskisi en son degistirilir
             // Yarida kesilirse oyuncunun calisan kurulumu bozulmaz
-            var staging = Path.Combine(lang, PackName + ".yeni");
+            var work = Work(game);
+            Directory.CreateDirectory(work);
+            var staging = Path.Combine(work, PackName + ".yeni");
             DeleteFolder(staging);
             Directory.CreateDirectory(staging);
             try
@@ -61,13 +84,16 @@ namespace LimbusTurkce
 
             status.Report("Kurulum tamamlanıyor...");
             var target = Target(game);
-            var old = Path.Combine(lang, PackName + ".eski");
+            var old = Path.Combine(work, PackName + ".eski");
             DeleteFolder(old);
             if (Directory.Exists(target)) Directory.Move(target, old);
             Directory.Move(staging, target);
             DeleteFolder(old);
+            DeleteFolder(Parked(game));
 
-            if (setLanguage) SelectLanguage(game);
+            if (keepEnglish) Park(game);
+            else if (setLanguage) SelectLanguage(game);
+            RemoveWork(game);
         }
 
         public static void Uninstall(string game)
@@ -76,13 +102,14 @@ namespace LimbusTurkce
                 throw new InvalidOperationException("Oyun açık. Önce Limbus Company'yi kapatın.");
 
             DeleteFolder(Target(game));
-            // Oyun secili dili bulamazsa ne yapacagini bilmiyoruz
-            // Ingilizceye donmesi icin ayari siliyoruz
+            DeleteFolder(Parked(game));
+            RemoveWork(game);
             ForgetLanguage(game);
         }
 
         // Yamayi kaldirmadan oyunun dilini degistirir
-        // Dosyalar yerinde kalir ve tek tikla geri acilir
+        // Ingilizcede paket Lang disina cekilir ve tek tikla geri gelir
+        // Ayni disk icinde tasima oldugu icin aninda olur
         public static void SetLanguage(string game, bool turkish)
         {
             if (Game.IsRunning())
@@ -90,13 +117,47 @@ namespace LimbusTurkce
             if (turkish)
             {
                 if (!IsInstalled(game)) throw new InvalidOperationException("Önce yamayı kurun.");
+                Unpark(game);
                 SelectLanguage(game);
             }
-            else ForgetLanguage(game);
+            else Park(game);
         }
 
-        // Kaldirmada da kullanilan yol
-        // Ayar silinince oyun Ingilizce basliyor
+        // Paket oyunun goremeyecegi yere cekilir
+        // Turkceyi gosteren ayar da silinir
+        // Ayar yokken Lang icinde paket olmadigi icin oyun Ingilizce baslar
+        static void Park(string game)
+        {
+            var target = Target(game);
+            if (Directory.Exists(target))
+            {
+                var parked = Parked(game);
+                DeleteFolder(parked);
+                Directory.CreateDirectory(Work(game));
+                Directory.Move(target, parked);
+            }
+            ForgetLanguage(game);
+        }
+
+        static void Unpark(string game)
+        {
+            var parked = Parked(game);
+            if (!Directory.Exists(parked)) return;
+            // Iki yerde de varsa oyunun gordugu kalir
+            if (Directory.Exists(Target(game))) DeleteFolder(parked);
+            else Directory.Move(parked, Target(game));
+            RemoveWork(game);
+        }
+
+        // Ici bosalan calisma klasoru oyunun yaninda kalmasin
+        static void RemoveWork(string game)
+        {
+            var work = Work(game);
+            if (Directory.Exists(work) && Directory.GetFileSystemEntries(work).Length == 0) Directory.Delete(work);
+        }
+
+        // Turkceyi gosteren ayar silinir
+        // Paket Lang disindayken ayar Turkceyi gostermesin
         static void ForgetLanguage(string game)
         {
             var config = ConfigPath(game);

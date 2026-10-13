@@ -30,16 +30,19 @@ Uygulama oyunun resmî **özel dil desteğini** kullanır. Oyun dosyalarını de
 | Oyunu bulur | Steam'in kendi kayıt defteri girdisi ve `libraryfolders.vdf` |
 | Oyunun İngilizce metnini **okur** | `LimbusCompany_Data\Assets\Resources_moved\Localize\en` |
 | Dil paketini **yazar** | `LimbusCompany_Data\Lang\Turkish` |
+| İngilizce seçiliyken paketi oyunun görmediği yerde tutar | `LimbusCompany_Data\LimbusTurkce\Turkish` |
 | Kurunca oyun dilini Türkçe yapar | `LimbusCompany_Data\Lang\config.json` içindeki `lang` değeri |
 | Ayarlarını ve beklenmeyen bir hata olursa `hata.txt` kaydını tutar | `%APPDATA%\LimbusTurkce` |
 | İndirdiği son paketi tutar | `%LOCALAPPDATA%\LimbusTurkce\paketler` |
 | İnternete bağlanır | Sadece GitHub: bu deponun sürüm listesi ve sürüm dosyaları |
 
-**Oyun dili** düğmesi yamayı kaldırmadan dili değiştirir. İngilizce seçilince sadece Türkçeyi gösteren
-`config.json` silinir, `Lang\Turkish` yerinde kalır ve Türkçe tek tıkla geri açılır.
+**Oyun dili** düğmesi yamayı kaldırmadan dili değiştirir. İngilizce seçilince `Lang\Turkish` klasörü oyunun
+okumadığı `LimbusCompany_Data\LimbusTurkce` klasörüne taşınır ve Türkçeyi gösteren `config.json` silinir.
+Sadece ayarı silmek yetmiyor: oyun `Lang` içinde bulduğu paketi kendisi yeniden seçiyor. Türkçe seçilince
+klasör geri taşınır. İkisi de aynı diskte taşıma olduğu için anında olur.
 
-Sağ üstteki dişliyle açılan **Ayarlar** sayfasındaki **Kaldır** tuşu `Lang\Turkish` klasörünü ve Türkçeyi
-gösteren `config.json`'u siler, oyun İngilizceye döner.
+Sağ üstteki dişliyle açılan **Ayarlar** sayfasındaki **Kaldır** tuşu `Lang\Turkish` klasörünü, varsa kenardaki
+kopyasını ve Türkçeyi gösteren `config.json`'u siler, oyun İngilizceye döner.
 
 Neden oyunun İngilizcesini kopyalıyor: oyun özel dili ancak eksiksiz bir set olarak okuyor. Çevrilmemiş
 dosyalar için İngilizce gerekiyor. Project Moon'un metnini dağıtmamak için onu sizin oyununuzdan alıyoruz.
