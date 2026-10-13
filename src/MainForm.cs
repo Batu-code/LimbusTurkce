@@ -606,7 +606,7 @@ namespace LimbusTurkce
 
             // Baslik
             Lettering.Tracked(g, "LIMBUS COMPANY", Typeface("Bahnschrift SemiBold", 11f), Palette.Muted, new PointF(Px(93), Px(22)), Px(3.2f));
-            DrawTitle(g, "TÜRKÇE YAMA", new PointF(Px(90), Px(33)));
+            DrawTitle(g, "TÜRKÇE YAMA", new PointF(Px(90), Px(37)));
 
             // Kirmizi seritte hayran yapimi uyarisi
             Art.DrawFaded(g, Art.Get("kirmizi-serit"), Px(20, 100, 464, 20), 0.95f);
