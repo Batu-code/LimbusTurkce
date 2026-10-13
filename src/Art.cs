@@ -139,6 +139,7 @@ namespace LimbusTurkce
         static readonly List<Func<float, bool>> Steps = new List<Func<float, bool>>();
         static readonly System.Diagnostics.Stopwatch Clock = System.Diagnostics.Stopwatch.StartNew();
         static double last;
+        static bool ticking;
 
         static Animator() => Timer.Tick += Tick;
 
@@ -150,15 +151,28 @@ namespace LimbusTurkce
             Timer.Start();
         }
 
+        // Bir adimin icinde Windows mesaj dondurebilir
+        // Oyunu baslatan steam adresi boyle yapiyor ve bekleyen bir sonraki kare araya giriyor
+        // Ic ice ikinci tur calismaz ve liste kopyasi uzerinde donulur
+        // Yoksa ic tur listeyi kisaltinca dis tur olmayan bir siraya erisiyordu
         static void Tick(object sender, EventArgs e)
         {
-            var now = Clock.Elapsed.TotalSeconds;
-            // Pencere suruklenirken takilan kareler sicrama yapmasin
-            var dt = (float)Math.Min(0.1, now - last);
-            last = now;
-            for (var i = Steps.Count - 1; i >= 0; i--)
-                if (i < Steps.Count && !Steps[i](dt)) Steps.RemoveAt(i);
-            if (Steps.Count == 0) Timer.Stop();
+            if (ticking) return;
+            ticking = true;
+            try
+            {
+                var now = Clock.Elapsed.TotalSeconds;
+                // Pencere suruklenirken takilan kareler sicrama yapmasin
+                var dt = (float)Math.Min(0.1, now - last);
+                last = now;
+                foreach (var step in Steps.ToArray())
+                    if (!step(dt)) Steps.Remove(step);
+                if (Steps.Count == 0) Timer.Stop();
+            }
+            finally
+            {
+                ticking = false;
+            }
         }
 
         public static float Toward(float value, float target, float amount) =>

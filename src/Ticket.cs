@@ -185,7 +185,14 @@ namespace LimbusTurkce
             if (tear >= 0f && tear < 1f)
             {
                 tear = Math.Min(1f, tear + dt / TearSeconds);
-                if (tear >= 1f) { var then = torn; torn = null; then?.Invoke(); }
+                // Oyunu baslatmak animasyon karesinin icinde yapilmaz
+                // Kare bittikten sonra pencerenin kendi sirasinda calisir
+                if (tear >= 1f && torn != null)
+                {
+                    var then = torn;
+                    torn = null;
+                    Canvas.BeginInvoke(then);
+                }
             }
             if (mend >= 0f) { mend += dt / 0.35f; if (mend >= 1f) mend = -1f; }
             if (stamp >= 0f) { stamp += dt; if (stamp >= StampSeconds) stamp = -1f; }
