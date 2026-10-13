@@ -71,16 +71,11 @@ namespace LimbusTurkce
         const float ShineSeconds = 1.1f;
         const float ShineEvery = 5.5f;
 
-        static readonly Random Random = new Random();
-
         bool pulse, shines;
         float? progress;
         float light, phase, tear = -1f, mend = -1f, stamp = -1f, shine = -1f, sweep;
         string stampText;
         Action torn;
-        readonly List<Spark> sparks = new List<Spark>();
-
-        class Spark { public float X, Y, Speed, Drift, Life, Age, Size; }
 
         public Ticket() => Overflow = 40f;
 
@@ -197,37 +192,10 @@ namespace LimbusTurkce
             if (mend >= 0f) { mend += dt / 0.35f; if (mend >= 1f) mend = -1f; }
             if (stamp >= 0f) { stamp += dt; if (stamp >= StampSeconds) stamp = -1f; }
             if (shine >= 0f) { shine += dt / ShineSeconds; if (shine >= 1f || !Idle) shine = -1f; }
-            StepSparks(dt, active);
 
             Invalidate();
             return light != Target || (Pulsing && active) || progress != null || (tear >= 0f && tear < 1f)
-                || mend >= 0f || stamp >= 0f || sparks.Count > 0 || shine >= 0f;
-        }
-
-        // Nefes alirken biletin ustunden altin kivilcimlar yukselir
-        void StepSparks(float dt, bool active)
-        {
-            for (var i = sparks.Count - 1; i >= 0; i--)
-            {
-                var s = sparks[i];
-                s.Age += dt;
-                s.Y -= s.Speed * dt;
-                s.X += s.Drift * dt;
-                if (s.Age >= s.Life) sparks.RemoveAt(i);
-            }
-            if (!Pulsing || !active || sparks.Count >= 16) return;
-            // Nefesin tepesinde daha sik
-            var breath = 0.5f - 0.5f * (float)Math.Cos(phase * Math.PI * 2);
-            if (Random.NextDouble() > dt * (4f + 10f * breath)) return;
-            sparks.Add(new Spark
-            {
-                X = Bounds.Left + 30f + (float)Random.NextDouble() * (Bounds.Width - 60f),
-                Y = Bounds.Top + 10f + (float)Random.NextDouble() * 10f,
-                Speed = 14f + (float)Random.NextDouble() * 18f,
-                Drift = -6f + (float)Random.NextDouble() * 12f,
-                Life = 0.9f + (float)Random.NextDouble() * 0.9f,
-                Size = 1.2f + (float)Random.NextDouble() * 1.8f,
-            });
+                || mend >= 0f || stamp >= 0f || shine >= 0f;
         }
 
         public override void Paint(Graphics g)
@@ -289,7 +257,6 @@ namespace LimbusTurkce
             if (white > 0.01f)
                 Put(g, litLabel.Get("beyaz|" + caption + "|" + Detail, rect.Size,
                     lg => DrawLabels(lg, new Rectangle(Point.Empty, rect.Size), k, caption, Color.White, detail)), rect.Location, white);
-            PaintSparks(g);
             if (stamp >= 0f) PaintStamp(g, rect, stamp);
         }
 
@@ -446,23 +413,6 @@ namespace LimbusTurkce
                 new PointF(x + width, rect.Bottom), new PointF(x, rect.Bottom),
             });
             return path;
-        }
-
-        void PaintSparks(Graphics g)
-        {
-            foreach (var s in sparks)
-            {
-                var life = s.Age / s.Life;
-                var alpha = (int)(230 * (life < 0.2f ? life / 0.2f : 1f - (life - 0.2f) / 0.8f));
-                if (alpha <= 0) continue;
-                var size = Canvas.Px(s.Size);
-                var x = Canvas.Px(s.X);
-                var y = Canvas.Px(s.Y);
-                using (var halo = new SolidBrush(Color.FromArgb(alpha / 4, 255, 150, 40)))
-                    g.FillEllipse(halo, x - size * 2f, y - size * 2f, size * 4f, size * 4f);
-                using (var core = new SolidBrush(Color.FromArgb(alpha, 255, 214, 120)))
-                    g.FillEllipse(core, x - size / 2f, y - size / 2f, size, size);
-            }
         }
 
         // Limbus muhru biletin ustune damga gibi iner
