@@ -10,7 +10,7 @@
     <Nullable>disable</Nullable>
     <AssemblyName>LimbusTurkce</AssemblyName>
     <RootNamespace>LimbusTurkce</RootNamespace>
-    <Version>1.1.0</Version>
+    <Version>1.2.0</Version>
     <Product>Limbus Company Türkçe Yama</Product>
     <Description>Limbus Company Türkçe yamasını kurar ve günceller</Description>
     <Copyright>Batu-code</Copyright>
