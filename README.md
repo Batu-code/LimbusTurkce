@@ -31,7 +31,7 @@ Uygulama oyunun resmî **özel dil desteğini** kullanır. Oyun dosyalarını de
 | Oyunun İngilizce metnini **okur** | `LimbusCompany_Data\Assets\Resources_moved\Localize\en` |
 | Dil paketini **yazar** | `LimbusCompany_Data\Lang\Turkish` |
 | Kurunca oyun dilini Türkçe yapar | `LimbusCompany_Data\Lang\config.json` içindeki `lang` değeri |
-| Ayarlarını tutar | `%APPDATA%\LimbusTurkce` |
+| Ayarlarını ve beklenmeyen bir hata olursa `hata.txt` kaydını tutar | `%APPDATA%\LimbusTurkce` |
 | İndirdiği son paketi tutar | `%LOCALAPPDATA%\LimbusTurkce\paketler` |
 | İnternete bağlanır | Sadece GitHub: bu deponun sürüm listesi ve sürüm dosyaları |
 

@@ -116,7 +116,7 @@ namespace LimbusTurkce
 
             message = new Label
             {
-                Bounds = new RectangleF(Column, 496, ColumnWidth, 40),
+                Bounds = new RectangleF(Column, 496, ColumnWidth, 48),
                 Family = "Bahnschrift",
                 Size = 12.5f,
                 Color = Palette.Muted,
@@ -131,6 +131,16 @@ namespace LimbusTurkce
 
             // Oyuna donunce koparilan kocan yerine gelir
             Activated += (s, e) => ticket.Mend();
+
+            // Beklenmeyen bir hata olursa oyuncu kirmizi satirda gorur
+            Crash.Reported += file =>
+            {
+                // Uzun kullanici yolu yerine Gezgin'e yazilabilen kisa hali
+                var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+                if (file.StartsWith(appData, StringComparison.OrdinalIgnoreCase)) file = "%APPDATA%" + file.Substring(appData.Length);
+                SetMessage("Beklenmeyen bir hata oldu. Ayrıntısı şu dosyada: " + file, Palette.Red);
+                keepMessage = true;
+            };
 
             // Acilis sahnesi her seyin ustunde durur
             // Bitince kendini kaldirir

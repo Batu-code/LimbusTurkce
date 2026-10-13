@@ -31,6 +31,11 @@ namespace LimbusTurkce
                 // GitHub baska surum kabul etmiyor
                 ServicePointManager.SecurityProtocol |= SecurityProtocolType.Tls12;
 
+                // Beklenmeyen bir hata oyuncuya .NET'in teknik kutusunu gostermesin
+                // Ayrintisi dosyaya yazilir ve pencerede kirmizi satirla soylenir
+                Application.SetUnhandledExceptionMode(UnhandledExceptionMode.CatchException);
+                Application.ThreadException += (s, e) => Crash.Report(e.Exception);
+
                 Application.EnableVisualStyles();
                 Application.SetCompatibleTextRenderingDefault(false);
                 Application.Run(new MainForm(updated));
