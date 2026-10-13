@@ -6,9 +6,9 @@ Project Moon ile bağlantısı yoktur.
 ## Kurulum
 
 1. [Sürümler](https://github.com/Batu-code/LimbusTurkce/releases/latest) sayfasından `LimbusTurkce.exe`'yi indirin.
-2. Çalıştırın ve **Kur**'a basın, sonra **Oyna**'ya basın.
+2. Çalıştırın ve kırmızı bilete basın. Önce **Kur** der, kurulunca **Oyna** der.
 
-Yeni sürüm çıkınca uygulamayı açmanız yeterli. Büyük tuş **Güncelle** der, değişenler yanında yazar.
+Yeni sürüm çıkınca uygulamayı açmanız yeterli. Bilet **Güncelle** der, değişenler soldaki klasörde yazar.
 
 Windows "Bilinmeyen yayıncı" uyarısı verebilir, çünkü uygulama imzalı değil (imza sertifikası ücretli).
 **Ek bilgi** → **Yine de çalıştır** ile açılır. Uygulamanın ne yaptığı aşağıda, kaynak kodu bu depoda.
@@ -38,7 +38,8 @@ Uygulama oyunun resmî **özel dil desteğini** kullanır. Oyun dosyalarını de
 **Oyun dili** düğmesi yamayı kaldırmadan dili değiştirir. İngilizce seçilince sadece Türkçeyi gösteren
 `config.json` silinir, `Lang\Turkish` yerinde kalır ve Türkçe tek tıkla geri açılır.
 
-**Kaldır** tuşu `Lang\Turkish` klasörünü ve Türkçeyi gösteren `config.json`'u siler, oyun İngilizceye döner.
+Sağ üstteki dişliyle açılan **Ayarlar** sayfasındaki **Kaldır** tuşu `Lang\Turkish` klasörünü ve Türkçeyi
+gösteren `config.json`'u siler, oyun İngilizceye döner.
 
 Neden oyunun İngilizcesini kopyalıyor: oyun özel dili ancak eksiksiz bir set olarak okuyor. Çevrilmemiş
 dosyalar için İngilizce gerekiyor. Project Moon'un metnini dağıtmamak için onu sizin oyununuzdan alıyoruz.
