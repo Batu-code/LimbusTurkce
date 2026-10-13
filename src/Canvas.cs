@@ -233,8 +233,17 @@ namespace LimbusTurkce
         }
 
         // En ustteki etkilesimli oge
+        // Acik bir soru kutusu varsa tiklama klavye ve tekerlek sadece ona gider
+        public Widget Overlay;
+
+        bool OverlayOpen => Overlay != null && Overlay.Visible;
+
+        // Tiklanan nokta ya da tus tuvalin neresine dusuyor
+        IEnumerable<Widget> Reachable() => OverlayOpen ? Overlay.Flatten() : Widgets.SelectMany(w => w.Flatten());
+
         Widget HitTest(PointF p)
         {
+            if (OverlayOpen) return Overlay.HitTest(p);
             for (var i = Widgets.Count - 1; i >= 0; i--)
             {
                 var hit = Widgets[i].HitTest(p);
@@ -336,6 +345,7 @@ namespace LimbusTurkce
         protected override void OnMouseWheel(MouseEventArgs e)
         {
             base.OnMouseWheel(e);
+            if (OverlayOpen) return;
             var p = Logical(e.Location);
             for (var i = Widgets.Count - 1; i >= 0; i--)
             {
@@ -352,10 +362,11 @@ namespace LimbusTurkce
             if (focused != null) focused.Invalidate();
         }
 
-        IEnumerable<Widget> Focusables() => Widgets.SelectMany(w => w.Flatten()).Where(w => w.Focusable && w.Visible && w.Enabled && w.ParentsVisible);
+        IEnumerable<Widget> Focusables() => Reachable().Where(w => w.Focusable && w.Visible && w.Enabled && w.ParentsVisible);
 
         protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
         {
+            if (OverlayOpen && Overlay.Key(keyData)) return true;
             if (focused != null && !Focusables().Contains(focused)) SetFocus(null);
             if (keyData == Keys.Tab || keyData == (Keys.Tab | Keys.Shift))
             {
@@ -392,7 +403,7 @@ namespace LimbusTurkce
         // Tuvalde ayri pencere olmadigi icin her tus burada tarif edilir
         protected override AccessibleObject CreateAccessibilityInstance() => new CanvasAccessible(this);
 
-        IEnumerable<Widget> AccessibleWidgets() => Widgets.SelectMany(w => w.Flatten()).Where(w => w.Clickable && w.Visible && w.ParentsVisible);
+        IEnumerable<Widget> AccessibleWidgets() => Reachable().Where(w => w.Clickable && w.Visible && w.ParentsVisible);
 
         class CanvasAccessible : ControlAccessibleObject
         {
@@ -532,6 +543,10 @@ namespace LimbusTurkce
         }
 
         public virtual bool Wheel(int delta) => false;
+
+        // Klavye tusu
+        // Isledi ise true
+        public virtual bool Key(Keys key) => false;
 
         // Pencere kapanirken sakli resimleri birakir
         public virtual void Release() { }

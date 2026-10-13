@@ -51,6 +51,7 @@ namespace LimbusTurkce
         readonly NotesView notes;
         readonly Label pathValue, patchValue;
         readonly ArtButton reinstall, uninstall;
+        readonly Dialog dialog;
 
         public MainForm(bool justUpdated)
         {
@@ -123,6 +124,10 @@ namespace LimbusTurkce
                 Wrap = true,
             };
             Add(message);
+
+            // Soru kutusu her seyin ustunde
+            dialog = new Dialog { Bounds = new RectangleF(0, 0, LogicalSize.Width, LogicalSize.Height) };
+            Add(dialog);
 
             // Oyuna donunce koparilan kocan yerine gelir
             Activated += (s, e) => ticket.Mend();
@@ -409,11 +414,17 @@ namespace LimbusTurkce
             RefreshState();
         }
 
+        // Once oyunun soru kutusuyla sorulur
         void Uninstall()
         {
             if (busy) return;
-            var answer = MessageBox.Show(this, "Türkçe yama kaldırılsın mı? Oyun bir sonraki açılışta İngilizce başlar.", "Kaldır", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
-            if (answer != DialogResult.Yes) return;
+            dialog.Ask("YAMA KALDIRILSIN MI?",
+                "Türkçe dosyalar silinir ve oyun bir sonraki açılışta İngilizce başlar. İsterseniz sonra tek tuşla yeniden kurabilirsiniz.",
+                "KALDIR", "VAZGEÇ", true, yes => { if (yes) RemovePatch(); });
+        }
+
+        void RemovePatch()
+        {
             try
             {
                 Installer.Uninstall(game);
@@ -450,17 +461,18 @@ namespace LimbusTurkce
 
         void PickFolder()
         {
-            using (var dialog = new FolderBrowserDialog { Description = "Limbus Company klasörünü seçin (içinde LimbusCompany_Data olan klasör)", ShowNewFolderButton = false })
+            using (var browser = new FolderBrowserDialog { Description = "Limbus Company klasörünü seçin (içinde LimbusCompany_Data olan klasör)", ShowNewFolderButton = false })
             {
-                if (game != null) dialog.SelectedPath = game;
-                if (dialog.ShowDialog(this) != DialogResult.OK) return;
-                var picked = dialog.SelectedPath;
+                if (game != null) browser.SelectedPath = game;
+                if (browser.ShowDialog(this) != DialogResult.OK) return;
+                var picked = browser.SelectedPath;
                 // Kutuphane klasoru secildiyse oyunu icinde ara
                 var nested = Path.Combine(picked, "steamapps", "common", "Limbus Company");
                 if (!Game.IsGameFolder(picked) && Game.IsGameFolder(nested)) picked = nested;
                 if (!Game.IsGameFolder(picked))
                 {
-                    MessageBox.Show(this, "Bu klasörde LimbusCompany_Data yok:\n" + picked, "Oyun bulunamadı", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    SetMessage("Seçilen klasörde LimbusCompany_Data yok. Oyunun kendi klasörünü seçin.", Palette.Red);
+                    keepMessage = true;
                     return;
                 }
                 game = picked;

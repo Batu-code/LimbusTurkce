@@ -484,4 +484,131 @@ namespace LimbusTurkce
             }
         }
     }
+
+    // Oyunun acilir pencere zeminiyle soru kutusu
+    // Acikken arkadaki her sey kararir ve tiklanamaz
+    // Esc vazgecer
+    class Dialog : Widget
+    {
+        const float Width = 452f;
+        const float Height = 214f;
+
+        readonly ArtButton yes, no;
+        string title = "", text = "";
+        float shown;
+        bool open;
+        Action<bool> answer;
+
+        public Dialog()
+        {
+            yes = Add(new ArtButton { Size = 12f });
+            no = Add(new ArtButton { Size = 12f });
+            yes.Click += () => Close(true);
+            no.Click += () => Close(false);
+            Visible = false;
+        }
+
+        public bool IsOpen => open;
+
+        // Tehlikeli is soruluyorsa evet tusu kirmizi yazar
+        public void Ask(string question, string detail, string yesText, string noText, bool danger, Action<bool> then)
+        {
+            title = question;
+            text = detail;
+            answer = then;
+            yes.SetCaption(yesText);
+            no.SetCaption(noText);
+            yes.TextColor = danger ? Palette.Red : Palette.Ink;
+            var panel = Panel;
+            yes.Bounds = new RectangleF(panel.Left + panel.Width / 2f - 162f, panel.Bottom - 64f, 154f, 36f);
+            no.Bounds = new RectangleF(panel.Left + panel.Width / 2f + 8f, panel.Bottom - 64f, 154f, 36f);
+            open = true;
+            Visible = true;
+            Canvas.Overlay = this;
+            Animate();
+            Invalidate();
+        }
+
+        public void Close(bool result)
+        {
+            if (!open) return;
+            open = false;
+            var then = answer;
+            answer = null;
+            Animate();
+            then?.Invoke(result);
+        }
+
+        RectangleF Panel => new RectangleF(Bounds.Left + (Bounds.Width - Width) / 2f, Bounds.Top + (Bounds.Height - Height) / 2f, Width, Height);
+
+        public override bool Key(Keys key)
+        {
+            if (key != Keys.Escape) return false;
+            Close(false);
+            return true;
+        }
+
+        protected override bool Step(float dt)
+        {
+            shown = Animator.Toward(shown, open ? 1f : 0f, dt / 0.18f);
+            if (!open && shown <= 0f)
+            {
+                Visible = false;
+                if (Canvas.Overlay == this) Canvas.Overlay = null;
+            }
+            Invalidate();
+            return shown != (open ? 1f : 0f);
+        }
+
+        // Acikken butun pencereyi tutar
+        // Bos yere tiklamak arkaya gecmez
+        public override Widget HitTest(PointF p)
+        {
+            if (!Visible) return null;
+            if (shown >= 1f)
+            {
+                var hit = base.HitTest(p);
+                if (hit != null) return hit;
+            }
+            return this;
+        }
+
+        public override Widget WheelTarget(PointF p) => Visible ? this : null;
+
+        public override void Paint(Graphics g)
+        {
+            var eased = Animator.Ease(shown);
+            using (var dim = new SolidBrush(Color.FromArgb((int)(175 * eased), 6, 3, 2)))
+                g.FillRectangle(dim, Canvas.Px(Bounds));
+
+            var area = Canvas.Px(RectangleF.Inflate(Panel, 12, 12));
+            if (area.Width <= 0 || area.Height <= 0) return;
+            // Kutu once ayri bir resme cizilir
+            // Sonra solarak ve hafifce yukari kayarak yerine gelir
+            using (var layer = new Bitmap(area.Width, area.Height, PixelFormat.Format32bppPArgb))
+            {
+                using (var lg = Graphics.FromImage(layer))
+                {
+                    CanvasForm.Prepare(lg);
+                    lg.TranslateTransform(-area.Left, -area.Top);
+                    PaintPanel(lg);
+                    base.Paint(lg);
+                }
+                var offset = (int)((1f - eased) * Canvas.Px(14));
+                Art.DrawFaded(g, layer, new Rectangle(area.Left, area.Top + offset, area.Width, area.Height), eased);
+            }
+        }
+
+        void PaintPanel(Graphics g)
+        {
+            var panel = Canvas.Px(Panel);
+            Art.DrawNine(g, Art.Get("zemin"), panel, 40, 0.55f * Canvas.Zoom);
+            var inner = RectangleF.Inflate(Panel, -26, -20);
+            var font = Canvas.Typeface("Bahnschrift SemiBold Condensed", 26f);
+            Lettering.Tracked(g, title, font, Palette.Gold, new PointF(Canvas.Px(inner.Left), Canvas.Px(inner.Top)), Canvas.Px(1f));
+            Art.DrawFaded(g, Art.Get("ayrac"), Canvas.Px(inner.Left, inner.Top + 38, inner.Width, 1.5f), 0.9f);
+            Lettering.Draw(g, text, Canvas.Typeface("Bahnschrift", 13.5f), Palette.Ink,
+                Canvas.Px(new RectangleF(inner.Left, inner.Top + 52, inner.Width, 64)), wrap: true);
+        }
+    }
 }
